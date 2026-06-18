@@ -19,6 +19,7 @@ import {
 } from 'openai/resources/index.mjs';
 import { Message } from '@/lib/types';
 import { repairJson } from '@toolsycc/json-repair';
+import { injectImagesIntoMessages } from './multimodal';
 
 type OpenAIConfig = {
   apiKey: string;
@@ -40,7 +41,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
   }
 
   convertToOpenAIMessages(messages: Message[]): ChatCompletionMessageParam[] {
-    return messages.map((msg) => {
+    const converted = messages.map((msg) => {
       if (msg.role === 'tool') {
         return {
           role: 'tool',
@@ -67,6 +68,11 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
 
       return msg;
     });
+
+    return injectImagesIntoMessages(
+      converted as ChatCompletionMessageParam[],
+      this.attachedImages,
+    );
   }
 
   async generateText(input: GenerateTextInput): Promise<GenerateTextOutput> {

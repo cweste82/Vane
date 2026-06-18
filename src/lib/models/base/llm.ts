@@ -8,7 +8,18 @@ import {
 } from '../types';
 
 abstract class BaseLLM<CONFIG> {
+  protected attachedImages: string[] = [];
+
   constructor(protected config: CONFIG) {}
+
+  /**
+   * Attach base64 data-URI images to this request-scoped model instance.
+   * Providers that support vision forward these on the last user message.
+   */
+  attachImages(images: string[]): void {
+    this.attachedImages = images ?? [];
+  }
+
   abstract generateText(input: GenerateTextInput): Promise<GenerateTextOutput>;
   abstract streamText(
     input: GenerateTextInput,
