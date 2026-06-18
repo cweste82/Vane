@@ -6,12 +6,16 @@ import Optimization from './MessageInputActions/Optimization';
 import Attach from './MessageInputActions/Attach';
 import { useChat } from '@/lib/hooks/useChat';
 import ModelSelector from './MessageInputActions/ChatModelSelector';
+import { useImageAttachments } from '@/lib/hooks/useImageAttachments';
 
 const EmptyChatMessageInput = () => {
   const { sendMessage } = useChat();
 
   /* const [copilotEnabled, setCopilotEnabled] = useState(false); */
   const [message, setMessage] = useState('');
+
+  const { images, removeImage, clearImages, onPaste, onDrop } =
+    useImageAttachments();
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -43,19 +47,47 @@ const EmptyChatMessageInput = () => {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        sendMessage(message);
+        sendMessage(message, undefined, false, images);
         setMessage('');
+        clearImages();
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          sendMessage(message);
+          sendMessage(message, undefined, false, images);
           setMessage('');
+          clearImages();
         }
       }}
       className="w-full"
     >
-      <div className="flex flex-col bg-light-secondary dark:bg-dark-secondary px-3 pt-5 pb-3 rounded-2xl w-full border border-light-200 dark:border-dark-200 shadow-sm shadow-light-200/10 dark:shadow-black/20 transition-all duration-200 focus-within:border-light-300 dark:focus-within:border-dark-300">
+      <div
+        onPaste={onPaste}
+        onDrop={onDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className="flex flex-col bg-light-secondary dark:bg-dark-secondary px-3 pt-5 pb-3 rounded-2xl w-full border border-light-200 dark:border-dark-200 shadow-sm shadow-light-200/10 dark:shadow-black/20 transition-all duration-200 focus-within:border-light-300 dark:focus-within:border-dark-300"
+      >
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            {images.map((src, i) => (
+              <div key={i} className="relative">
+                <img
+                  src={src}
+                  alt={`attachment ${i + 1}`}
+                  className="h-16 w-16 rounded-lg object-cover border border-light-200 dark:border-dark-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-1.5 -right-1.5 bg-black/70 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  aria-label="Remove image"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <TextareaAutosize
           ref={inputRef}
           value={message}

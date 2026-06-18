@@ -4,9 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import AttachSmall from './MessageInputActions/AttachSmall';
 import { useChat } from '@/lib/hooks/useChat';
+import { useImageAttachments } from '@/lib/hooks/useImageAttachments';
 
 const MessageInput = () => {
   const { loading, sendMessage } = useChat();
+
+  const { images, removeImage, clearImages, onPaste, onDrop } =
+    useImageAttachments();
 
   const [copilotEnabled, setCopilotEnabled] = useState(false);
   const [message, setMessage] = useState('');
@@ -50,21 +54,47 @@ const MessageInput = () => {
       onSubmit={(e) => {
         if (loading) return;
         e.preventDefault();
-        sendMessage(message);
+        sendMessage(message, undefined, false, images);
         setMessage('');
+        clearImages();
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey && !loading) {
           e.preventDefault();
-          sendMessage(message);
+          sendMessage(message, undefined, false, images);
           setMessage('');
+          clearImages();
         }
       }}
+      onPaste={onPaste}
+      onDrop={onDrop}
+      onDragOver={(e) => e.preventDefault()}
       className={cn(
         'relative bg-light-secondary dark:bg-dark-secondary p-4 flex items-center overflow-visible border border-light-200 dark:border-dark-200 shadow-sm shadow-light-200/10 dark:shadow-black/20 transition-all duration-200 focus-within:border-light-300 dark:focus-within:border-dark-300',
         mode === 'multi' ? 'flex-col rounded-2xl' : 'flex-row rounded-full',
       )}
     >
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 pb-2">
+          {images.map((src, i) => (
+            <div key={i} className="relative">
+              <img
+                src={src}
+                alt={`attachment ${i + 1}`}
+                className="h-16 w-16 rounded-lg object-cover border border-light-200 dark:border-dark-200"
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                className="absolute -top-1.5 -right-1.5 bg-black/70 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {mode === 'single' && <AttachSmall />}
       <TextareaAutosize
         ref={inputRef}
