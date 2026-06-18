@@ -9,6 +9,7 @@ import db from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { chats } from '@/lib/db/schema';
 import UploadManager from '@/lib/uploads/manager';
+import { validateImages } from '@/lib/utils/imageValidation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ const messageSchema = z.object({
   messageId: z.string().min(1, 'Message ID is required'),
   chatId: z.string().min(1, 'Chat ID is required'),
   content: z.string().min(1, 'Message content is required'),
+  images: z.array(z.string()).optional().default([]),
 });
 
 const chatModelSchema: z.ZodType<ModelWithProvider> = z.object({
@@ -135,6 +137,49 @@ export const POST = async (req: Request) => {
       ),
     ]);
 
+    let activeLlm = llm;
+    const images = body.message.images ?? [];
+
+    if (images.length > 0) {
+      const check = validateImages(images);
+      if (!check.ok) {
+        return Response.json({ message: check.error }, { status: 400 });
+      }
+
+      const visionModel =
+        process.env.VISION_CHAT_MODEL || 'Qwen3-VL-30B-A3B-Instruct-FP8';
+      const visionMode = process.env.VISION_MODE || 'multimodal';
+
+      if (visionMode === 'describe') {
+        // Hybrid fallback: caption with the vision model, keep the text model
+        // driving the agentic loop. Search stays image-aware via the caption.
+        const captioner = await registry.loadChatModel(
+          body.chatModel.providerId,
+          visionModel,
+        );
+        captioner.attachImages(images);
+        const caption = await captioner.generateText({
+          messages: [
+            {
+              role: 'user',
+              content:
+                'Describe this image in detail for use as search context. ' +
+                'Transcribe any visible text verbatim (OCR).',
+            },
+          ],
+        });
+        message.content = `[Attached image description: ${caption.content}]\n\n${message.content}`;
+      } else {
+        // True multimodal: route the whole turn to the sovereign vision model
+        // and forward the image on the last user message of every LLM call.
+        activeLlm = await registry.loadChatModel(
+          body.chatModel.providerId,
+          visionModel,
+        );
+        activeLlm.attachImages(images);
+      }
+    }
+
     const history: ChatTurnMessage[] = body.history.map((msg) => {
       if (msg[0] === 'human') {
         return {
@@ -216,7 +261,7 @@ export const POST = async (req: Request) => {
       chatId: body.message.chatId,
       messageId: body.message.messageId,
       config: {
-        llm,
+        llm: activeLlm,
         embedding: embedding,
         sources: body.sources as SearchSources[],
         mode: body.optimizationMode,
