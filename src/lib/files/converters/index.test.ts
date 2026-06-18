@@ -11,7 +11,7 @@ describe('convert', () => {
     expect(buf.subarray(0, 4).toString('latin1')).toBe('%PDF');
   });
   it('rejects an unsupported format', async () => {
-    // @ts-expect-error testing runtime guard
+    // `convert` accepts a string and guards at runtime, so no ts-expect-error needed.
     await expect(convert('csv', 'x')).rejects.toThrow();
   });
 });
