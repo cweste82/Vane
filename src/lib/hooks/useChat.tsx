@@ -55,6 +55,7 @@ type ChatContext = {
     message: string,
     messageId?: string,
     rewrite?: boolean,
+    images?: string[],
   ) => Promise<void>;
   rewrite: (messageId: string) => void;
   setChatModelProvider: (provider: ChatModelProvider) => void;
@@ -715,6 +716,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     message,
     messageId,
     rewrite = false,
+    images = [],
   ) => {
     if (loading || !message) return;
     setLoading(true);
@@ -753,6 +755,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           messageId: messageId,
           chatId: chatId!,
           content: message,
+          images,
         },
         chatId: chatId!,
         files: fileIds,
