@@ -26,6 +26,7 @@ import AssistantSteps from './AssistantSteps';
 import { ResearchBlock } from '@/lib/types';
 import Renderer from './Widgets/Renderer';
 import CodeBlock from './MessageRenderer/CodeBlock';
+import ArtifactCard from './MessageRenderer/ArtifactCard';
 
 const ThinkTagProcessor = ({
   children,
@@ -81,6 +82,9 @@ const MessageBox = ({
       }
 
       if (node.type === RuleType.codeBlock) {
+        if ((node.lang || '').toLowerCase() === 'artifact') {
+          return <ArtifactCard key={state.key} rawBody={node.text} />;
+        }
         return (
           <CodeBlock key={state.key} language={node.lang || ''}>
             {node.text}
